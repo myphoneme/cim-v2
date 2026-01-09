@@ -1,0 +1,5 @@
+{
+  "name": "DC-Ops Master: Engineer Portal",
+  "description": "A comprehensive 24/7 Data Centre operations portal for L1/L2 engineers, featuring an AI-powered conversational assistant, equipment inventory management, and technical documentation repository for all DC OEM hardware and software.",
+  "requestFramePermissions": []
+}
