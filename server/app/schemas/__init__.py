@@ -7,6 +7,13 @@ from .equipment import (
 )
 from .manual import ManualContentCreate, ManualContentResponse
 from .chat import ChatMessage, ChatRequest
+from .location import LocationCreate, LocationUpdate, LocationResponse
+from .device_item import (
+    DeviceItemCreate,
+    DeviceItemUpdate,
+    DeviceItemResponse,
+    DeviceItemListResponse,
+)
 
 __all__ = [
     "UserCreate",
@@ -21,4 +28,11 @@ __all__ = [
     "ManualContentResponse",
     "ChatMessage",
     "ChatRequest",
+    "LocationCreate",
+    "LocationUpdate",
+    "LocationResponse",
+    "DeviceItemCreate",
+    "DeviceItemUpdate",
+    "DeviceItemResponse",
+    "DeviceItemListResponse",
 ]

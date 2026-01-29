@@ -23,5 +23,5 @@ def get_db():
 
 
 def init_db():
-    from .models import user, equipment, manual, attachment, chat_history
+    from .models import user, equipment, manual, attachment, chat_history, location, device_item
     Base.metadata.create_all(bind=engine)

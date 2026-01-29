@@ -114,3 +114,79 @@ export enum NavigationTab {
   Assistant = 'assistant',
   Admin = 'admin',
 }
+
+// Device Categories for Infrastructure
+export type DeviceCategory = 'Network' | 'Compute' | 'Storage' | 'Security' | 'Backup' | 'Virtual';
+
+// Location types
+export interface Location {
+  id: number;
+  name: string;
+  code: string;
+  type: 'DC' | 'BR' | 'DR';
+  address?: string;
+  is_primary: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Device Item (Asset Inventory)
+export interface DeviceItem {
+  id: number;
+  device_name: string;
+  hostname?: string;
+  ip_address?: string;
+  serial_number?: string;
+  category: DeviceCategory;
+  equipment_id?: number;
+  model?: string;
+  version?: string;
+  location_id?: number;
+  username?: string;
+  password?: string;
+  description?: string;
+  rack_position?: string;
+  status: 'Active' | 'Inactive' | 'Maintenance' | 'Decommissioned';
+  created_at: string;
+  updated_at: string;
+  equipment?: {
+    id: number;
+    name: string;
+    vendor: string;
+    model: string;
+  };
+  location?: Location;
+}
+
+export interface DeviceItemListItem {
+  id: number;
+  device_name: string;
+  hostname?: string;
+  ip_address?: string;
+  serial_number?: string;
+  category: DeviceCategory;
+  model?: string;
+  version?: string;
+  status: string;
+  location_name?: string;
+  equipment_name?: string;
+}
+
+export interface VirtualMachine {
+  id: string | number;
+  name: string;
+  vendor: string;
+  project: string;
+  tier: string;
+  ip_address: string;
+  hostname: string;
+  role: string;
+  os: string;
+  disk_primary: string;
+  disk_secondary?: string;
+  memory_gb: number | string;
+  host_ip: string;
+  vcpu: number | string;
+  location?: string;
+}

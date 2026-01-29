@@ -10,11 +10,8 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str = ""
 
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-    ]
+    # Default to wide-open CORS in dev; override in .env for prod
+    CORS_ORIGINS: list[str] = ["*"]
 
     ADMIN_EMAIL: str = "phoneme2016@gmail.com"
     ADMIN_PASSWORD: str = "Solution@1979"

@@ -3,7 +3,7 @@ import { useAuth } from './contexts/AuthContext';
 import { useTheme } from './contexts/ThemeContext';
 import { NavigationTab } from './types';
 import Dashboard from './components/Dashboard';
-import InventoryTable from './components/InventoryTable';
+import InfrastructureView from './components/InfrastructureView';
 import Library from './components/Library';
 import ChatInterface from './components/ChatInterface';
 import AdminPanel from './components/AdminPanel';
@@ -42,7 +42,7 @@ function App() {
       case NavigationTab.Dashboard:
         return <Dashboard />;
       case NavigationTab.Inventory:
-        return <InventoryTable />;
+        return <InfrastructureView />;
       case NavigationTab.Library:
         return <Library />;
       case NavigationTab.Assistant:

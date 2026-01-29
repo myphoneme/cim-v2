@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
-import { Equipment, DeviceArea, ManualContent, Attachment } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Equipment, DeviceArea, ManualContent, Attachment, InfrastructureItem } from '../types';
 import ManualGenerator from './ManualGenerator';
+import { INFRA_ITEMS } from '../constants';
 
 interface AdminPanelProps {
   inventory: Equipment[];
@@ -12,9 +13,10 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ inventory, onAdd, onUpdate, onDelete, onSaveManual }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'inventory' | 'generator'>('inventory');
+  const [activeSubTab, setActiveSubTab] = useState<'inventory' | 'generator' | 'locations'>('inventory');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Equipment | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string>('All');
   
   const emptyItem: Equipment = {
     id: '', name: '', area: 'Network', type: '', vendor: '', model: '', serialNumber: '', licenseDetails: '', qty: 1, sopStatus: 'Pending',
@@ -47,6 +49,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ inventory, onAdd, onUpdate, onD
     setIsModalOpen(false);
   };
 
+  const locationList = useMemo(() => {
+    const counts: Record<string, { items: number; routers: number; firewalls: number; switches: number; poe: number }> = {};
+    INFRA_ITEMS.forEach((item: InfrastructureItem) => {
+      if (!counts[item.location]) {
+        counts[item.location] = { items: 0, routers: 0, firewalls: 0, switches: 0, poe: 0 };
+      }
+      counts[item.location].items += 1;
+      if (item.hostname.toLowerCase().includes('rtr')) counts[item.location].routers += 1;
+      else if (item.hostname.toLowerCase().includes('fw')) counts[item.location].firewalls += 1;
+      else if (item.hostname.toLowerCase().includes('poe')) counts[item.location].poe += 1;
+      else counts[item.location].switches += 1;
+    });
+    return Object.keys(counts).sort().map(loc => ({ location: loc, ...counts[loc] }));
+  }, []);
+
+  const filteredInfra = useMemo(() => {
+    if (selectedLocation === 'All') return INFRA_ITEMS;
+    return INFRA_ITEMS.filter(item => item.location === selectedLocation);
+  }, [selectedLocation]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Admin Navigation */}
@@ -56,6 +78,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ inventory, onAdd, onUpdate, onD
           className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeSubTab === 'inventory' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
         >
           <i className="fa-solid fa-server mr-2"></i> DC Inventory
+        </button>
+        <button 
+          onClick={() => setActiveSubTab('locations')}
+          className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeSubTab === 'locations' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+        >
+          <i className="fa-solid fa-location-dot mr-2"></i> Locations & Items
         </button>
         <button 
           onClick={() => setActiveSubTab('generator')}
@@ -121,6 +149,98 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ inventory, onAdd, onUpdate, onD
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : activeSubTab === 'locations' ? (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900">Locations & Item Registry</h2>
+              <p className="text-slate-500 text-sm mt-1">Track branch/DC presence and drill into all registered items.</p>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setSelectedLocation('All')}
+                className={`px-4 py-2 rounded-xl text-sm font-bold ${selectedLocation === 'All' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              >
+                Show All
+              </button>
+              <div className="bg-slate-100 px-4 py-2 rounded-xl text-sm font-bold text-slate-700">
+                {filteredInfra.length} items
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {locationList.map(loc => (
+              <button
+                key={loc.location}
+                onClick={() => setSelectedLocation(loc.location)}
+                className={`text-left bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition ${
+                  selectedLocation === loc.location ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">Location</p>
+                    <h4 className="text-lg font-black text-slate-900">{loc.location}</h4>
+                  </div>
+                  <span className="text-sm font-bold bg-blue-50 text-blue-700 px-3 py-1 rounded-full">{loc.items} items</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-4 text-xs text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span> Routers: {loc.routers}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span> Firewalls: {loc.firewalls}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full"></span> Switches: {loc.switches}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-fuchsia-500 rounded-full"></span> PoE: {loc.poe}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-900">{selectedLocation === 'All' ? 'All Items' : selectedLocation}</h3>
+                <p className="text-sm text-slate-500">Live registry of items by location.</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-widest">
+                  <tr>
+                    <th className="px-6 py-4">Hostname</th>
+                    <th className="px-6 py-4">IP</th>
+                    <th className="px-6 py-4">Category</th>
+                    <th className="px-6 py-4">Description</th>
+                    <th className="px-6 py-4">Location</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredInfra.map(item => (
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 font-semibold text-slate-900">{item.hostname}</td>
+                      <td className="px-6 py-4 font-mono text-xs text-slate-600">{item.ipAddress || '—'}</td>
+                      <td className="px-6 py-4">{item.category}</td>
+                      <td className="px-6 py-4 text-slate-600">{item.description}</td>
+                      <td className="px-6 py-4 text-slate-500">{item.location}</td>
+                    </tr>
+                  ))}
+                  {filteredInfra.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-slate-400">No items found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       ) : (

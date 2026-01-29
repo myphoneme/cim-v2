@@ -41,6 +41,17 @@ export interface Equipment {
   attachments: Attachment[];
 }
 
+export type InfrastructureCategory = 'Router' | 'Firewall' | 'Switch' | 'PoE Switch';
+
+export interface InfrastructureItem {
+  id: string;
+  location: string;
+  category: InfrastructureCategory;
+  hostname: string;
+  ipAddress: string;
+  description: string;
+}
+
 export interface ManualContent {
   summary: string;
   monitoring: string[];
