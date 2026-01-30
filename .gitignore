@@ -10,6 +10,16 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.vite
+.cache
+.parcel-cache
+.eslintcache
+.turbo
+coverage
+tmp
+temp
+*.tmp
+*.temp
 *.local
 
 # Editor directories and files
@@ -22,3 +32,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+server/uploads/*
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+.env
+server/.env
+
+# SQLite / local DBs
+*.sqlite
+*.sqlite3
+server/database.sqlite
