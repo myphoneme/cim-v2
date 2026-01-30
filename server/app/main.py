@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import text
 from .database import init_db, SessionLocal
 from .models.user import User
 from .models.location import Location
@@ -1347,4 +1348,15 @@ async def root():
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "healthy"}
+    db_ok = True
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+    return {"status": "healthy" if db_ok else "degraded", "database": "ok" if db_ok else "error"}
