@@ -31,7 +31,7 @@ def evaluate_sample(db: Session, device_item_id: Optional[int], vm_id: Optional[
 
     rules = db.query(AlertRule).filter(
         AlertRule.metric_key == metric_key,
-        AlertRule.is_enabled == 1
+        AlertRule.is_enabled == True
     )
     if group_id:
         rules = rules.filter(AlertRule.group_id == group_id)
