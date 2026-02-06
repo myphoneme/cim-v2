@@ -69,7 +69,7 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white dark:bg-[#0A0A0A] transition-colors duration-300">
       {/* Sidebar - Deep Onyx (always dark) */}
-      <aside className="w-full md:w-72 bg-[#111111] text-slate-300 flex flex-col h-auto md:h-screen md:sticky md:top-0 z-20 shadow-2xl">
+      <aside className="w-full md:w-72 bg-[#111111] text-slate-300 flex flex-col h-auto md:h-screen md:sticky md:top-0 z-20 shadow-2xl md:overflow-y-auto">
         <div className="p-8 flex flex-col items-center md:items-start gap-4 border-b border-white/5">
           <div className="flex items-center gap-2">
             <span className="text-white font-black text-2xl tracking-tighter">PHONEME</span>
@@ -135,7 +135,7 @@ function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 md:p-12 lg:p-16 overflow-hidden transition-colors duration-300 bg-slate-100 dark:bg-[#0A0A0A]">
+      <main className="flex-1 p-6 md:p-12 lg:p-16 overflow-y-auto h-auto md:h-screen transition-colors duration-300 bg-slate-100 dark:bg-[#0A0A0A]">
         {/* Page Header */}
         <header className="mb-12 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="space-y-3">

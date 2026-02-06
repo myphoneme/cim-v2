@@ -17,10 +17,36 @@ export default function MonitoringUploads() {
   const [editedCaptureTime, setEditedCaptureTime] = useState<string>('');
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [feedback, setFeedback] = useState<string>('');
-  const [feedbackTone, setFeedbackTone] = useState<'success' | 'error' | ''>('');
+  const [feedbackTone, setFeedbackTone] = useState<'success' | 'error' | 'warning' | ''>('');
   const isModalOpen = selectedUploadId !== null;
-  const formatIst = (iso: string) =>
-    new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
+  const formatIst = (iso: string) => {
+    const hasTz = /([zZ]|[+-]\d{2}:\d{2})$/.test(iso);
+    const normalized = hasTz ? iso : `${iso}Z`;
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    }).format(new Date(normalized)) + ' IST';
+  };
+  const formatShortIst = (iso: string) => {
+    const hasTz = /([zZ]|[+-]\d{2}:\d{2})$/.test(iso);
+    const normalized = hasTz ? iso : `${iso}Z`;
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      year: '2-digit',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(new Date(normalized)).replace(/[^\d]/g, '');
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -31,10 +57,13 @@ export default function MonitoringUploads() {
     try {
       setFeedback('Uploading...');
       setFeedbackTone('');
-      await uploadMutation.mutateAsync(formData);
+      const created = await uploadMutation.mutateAsync(formData);
       setFeedback('Upload successful. Parsing screenshot...');
       setFeedbackTone('success');
       setFile(null);
+      if (created?.id) {
+        setSelectedUploadId(created.id);
+      }
     } catch (err: any) {
       setFeedback(err?.message || 'Upload failed.');
       setFeedbackTone('error');
@@ -95,15 +124,21 @@ export default function MonitoringUploads() {
   const handleConfirm = async () => {
     if (!selectedUploadId || !selectedUpload) return;
     try {
-      await confirmMutation.mutateAsync({
+      const result = await confirmMutation.mutateAsync({
         id: selectedUploadId,
         data: {
           metrics: editedMetrics,
           capture_time: editedCaptureTime || new Date().toISOString(),
         },
       });
-      setFeedback('Metrics saved successfully.');
-      setFeedbackTone('success');
+      const skipped = result?.skipped_unmapped?.length || 0;
+      if (skipped > 0) {
+        setFeedback(`Saved ${result.created} metrics. ${skipped} skipped because IPs are not in master data.`);
+        setFeedbackTone('warning');
+      } else {
+        setFeedback('Metrics saved successfully.');
+        setFeedbackTone('success');
+      }
       closeModal();
     } catch (err: any) {
       setFeedback(err?.message || 'Failed to save metrics.');
@@ -138,6 +173,7 @@ export default function MonitoringUploads() {
     editedMetrics.length > 0 &&
     selectedUploadId
   );
+  const isParsing = selectedUpload?.parse_status === 'pending';
 
   const activeKey = llmConfig?.keys?.find(key => key.is_selected);
   const llmBadge = llmConfig
@@ -188,7 +224,13 @@ export default function MonitoringUploads() {
 
         {feedback && (
           <div className={`mt-4 text-sm font-semibold ${
-            feedbackTone === 'success' ? 'text-emerald-500' : feedbackTone === 'error' ? 'text-red-500' : 'text-slate-400'
+            feedbackTone === 'success'
+              ? 'text-emerald-500'
+              : feedbackTone === 'warning'
+                ? 'text-amber-500'
+                : feedbackTone === 'error'
+                  ? 'text-red-500'
+                  : 'text-slate-400'
           }`}>
             {feedback}
           </div>
@@ -200,11 +242,13 @@ export default function MonitoringUploads() {
           <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Recent Uploads</h3>
           <span className="text-xs font-bold text-slate-400">{uploads.length} items</span>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-white/5">
+        <div className="max-h-[60vh] overflow-y-auto divide-y divide-slate-100 dark:divide-white/5">
           {uploads.map(upload => (
             <div key={upload.id} className="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
-                <div className="font-bold text-slate-900 dark:text-white">{upload.file_name}</div>
+                <div className="font-bold text-slate-900 dark:text-white">
+                  {upload.file_name} · {formatShortIst(upload.created_at)}
+                </div>
                 <div className="text-xs text-slate-400 mt-1">
                   {upload.dashboard_label || 'Dashboard'} ? {formatIst(upload.created_at)}
                 </div>
@@ -234,9 +278,9 @@ export default function MonitoringUploads() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="bg-white dark:bg-[#111111] rounded-3xl shadow-xl w-full max-w-5xl max-h-[85vh] overflow-hidden border border-slate-200 dark:border-white/5">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-[#111111] rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden border border-slate-200 dark:border-white/5">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-white/5 sticky top-0 bg-white/90 dark:bg-[#111111]/90 backdrop-blur z-10">
               <div>
                 <div className="text-lg font-black text-slate-900 dark:text-white">Upload Preview</div>
                 <div className="text-xs text-slate-400">{selectedUpload?.file_name || 'Loading...'}</div>
@@ -250,9 +294,9 @@ export default function MonitoringUploads() {
                 x
               </button>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 overflow-y-auto max-h-[75vh]">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 p-6 overflow-y-auto max-h-[78vh]">
               <div className="space-y-4">
-                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20">
+                <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/20 shadow-sm">
                   {previewUrl ? (
                     <img
                       src={previewUrl}
@@ -277,7 +321,12 @@ export default function MonitoringUploads() {
                   <div className="text-sm text-slate-400">Loading metrics...</div>
                 )}
                 {selectedUpload?.parse_status === 'pending' && (
-                  <div className="text-sm text-amber-500">Parsing in progress... (auto-refreshing)</div>
+                  <div className="flex items-center gap-2 text-sm text-amber-500">
+                    <span className="inline-flex h-4 w-4 items-center justify-center">
+                      <span className="h-3 w-3 rounded-full border-2 border-amber-500 border-t-transparent animate-spin"></span>
+                    </span>
+                    Parsing in progress... (auto-refreshing)
+                  </div>
                 )}
                 {selectedUpload?.parse_status === 'error' && (
                   <div className="text-sm text-red-500">Parsing failed. You can still add metrics manually.</div>
@@ -287,7 +336,7 @@ export default function MonitoringUploads() {
                 )}
                 {editedMetrics.map((metric, index) => (
                   <div key={`${metric.key || 'metric'}-${index}`} className="p-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A]">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <input
                         className="px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] text-xs"
                         placeholder="Metric key"
@@ -335,7 +384,7 @@ export default function MonitoringUploads() {
                     </div>
                   </div>
                 )}
-                <div className="flex items-center gap-3">
+                <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-white/95 dark:bg-[#111111]/95 border-t border-slate-100 dark:border-white/5 backdrop-blur flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={() => refetchUpload()}
@@ -354,13 +403,14 @@ export default function MonitoringUploads() {
                     type="button"
                     onClick={handleConfirm}
                     disabled={!canConfirm || confirmMutation.isPending}
-                    className="flex-1 px-4 py-2 rounded-xl text-sm font-bold bg-brand-500 text-white pill-shadow disabled:opacity-50"
+                    className="flex-1 min-w-[180px] px-4 py-2 rounded-xl text-sm font-bold bg-brand-500 text-white pill-shadow disabled:opacity-50"
                   >
                     {confirmMutation.isPending ? 'Saving...' : 'Confirm & Save'}
                   </button>
                   <button
                     type="button"
                     onClick={closeModal}
+                    disabled={isParsing}
                     className="px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 dark:bg-white/10 text-slate-600 hover:text-brand-500"
                   >
                     Close

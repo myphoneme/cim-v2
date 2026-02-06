@@ -147,6 +147,10 @@ async def confirm_upload(
     metrics = data.metrics if data.metrics is not None else (upload.extracted_metrics or [])
     capture_time = data.capture_time or upload.capture_time or datetime.utcnow()
 
+    created = 0
+    skipped_unmapped = []
+    skipped_missing_key = 0
+
     for metric in metrics:
         metric_data = metric.model_dump() if hasattr(metric, "model_dump") else metric
         ip_address = metric_data.get("ip_address")
@@ -163,9 +167,14 @@ async def confirm_upload(
                     device_item_id = device.id
 
         if not device_item_id and not vm_id:
+            skipped_unmapped.append({
+                "ip_address": ip_address,
+                "key": metric_data.get("key")
+            })
             continue
 
         if not metric_data.get("key"):
+            skipped_missing_key += 1
             continue
 
         sample = MetricSample(
@@ -181,7 +190,13 @@ async def confirm_upload(
         db.add(sample)
         db.flush()
         evaluate_sample(db, device_item_id, vm_id, sample.metric_key, sample.value, upload.id)
+        created += 1
 
     upload.parse_status = "ok"
     db.commit()
-    return {"message": "Upload confirmed"}
+    return {
+        "message": "Upload confirmed",
+        "created": created,
+        "skipped_unmapped": skipped_unmapped,
+        "skipped_missing_key": skipped_missing_key
+    }

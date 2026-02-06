@@ -11,6 +11,11 @@ export const monitoringApi = {
   },
   get: async (id: number): Promise<MonitoringUpload> => api.get(`/monitoring-uploads/${id}`),
   upload: async (formData: FormData): Promise<MonitoringUpload> => api.upload('/monitoring-uploads/', formData),
-  confirm: async (id: number, data: { metrics?: MonitoringUpload['extracted_metrics']; capture_time?: string }): Promise<void> =>
+  confirm: async (id: number, data: { metrics?: MonitoringUpload['extracted_metrics']; capture_time?: string }): Promise<{
+    message: string;
+    created: number;
+    skipped_unmapped: Array<{ ip_address?: string; key?: string }>;
+    skipped_missing_key: number;
+  }> =>
     api.post(`/monitoring-uploads/${id}/confirm`, data),
 };
