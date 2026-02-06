@@ -9,8 +9,11 @@ from ..config import get_settings
 settings = get_settings()
 
 
+from typing import Optional
+
+
 class OpenAIService:
-    def __init__(self, api_key: str | None = None, model_name: str | None = None):
+    def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
         from openai import OpenAI
         self.client = OpenAI(api_key=api_key or settings.OPENAI_API_KEY)
         self.model_name = model_name or settings.OPENAI_MODEL
