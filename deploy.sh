@@ -30,18 +30,14 @@ fi
 
 echo "==> Running Alembic migrations"
 HAS_ALEMBIC_VERSION=$(python - <<'PY'
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect
 from app.config import get_settings
 
 settings = get_settings()
 engine = create_engine(settings.DATABASE_URL)
 with engine.connect() as conn:
-    exists = conn.execute(
-        text(
-            "SELECT 1 FROM information_schema.tables "
-            "WHERE table_schema='public' AND table_name='alembic_version'"
-        )
-    ).scalar()
+    inspector = inspect(conn)
+    exists = inspector.has_table("alembic_version")
 print("1" if exists else "0")
 PY
 )
