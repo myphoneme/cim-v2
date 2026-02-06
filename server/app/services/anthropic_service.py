@@ -9,8 +9,11 @@ from ..config import get_settings
 settings = get_settings()
 
 
+from typing import Optional
+
+
 class AnthropicService:
-    def __init__(self, api_key: str | None = None, model_name: str | None = None):
+    def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
         from anthropic import Anthropic
         self.client = Anthropic(api_key=api_key or settings.ANTHROPIC_API_KEY)
         self.model_name = model_name or settings.ANTHROPIC_MODEL
