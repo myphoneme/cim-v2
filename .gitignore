@@ -33,4 +33,4 @@ client/node_modules/
 server/.env
 server/uploads/
 server/database.sqlite
-deploy.sh
+# deploy.sh
