@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, List, Dict, Any
+from typing import AsyncGenerator, List, Dict, Any, Optional
 import json
 from ..config import get_settings
 
@@ -6,7 +6,7 @@ settings = get_settings()
 
 
 class GeminiService:
-    def __init__(self, api_key: str | None = None, model_name: str | None = None):
+    def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
         try:
             from google import genai
             self.client = genai.Client(api_key=api_key or settings.GEMINI_API_KEY)
