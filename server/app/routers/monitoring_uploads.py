@@ -181,6 +181,9 @@ async def confirm_upload(
         if not metric_data.get("key"):
             skipped_missing_key += 1
             continue
+        if metric_data.get("value") is None:
+            skipped_missing_key += 1
+            continue
 
         sample = MetricSample(
             device_item_id=device_item_id,
