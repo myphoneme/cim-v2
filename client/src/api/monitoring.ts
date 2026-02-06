@@ -1,11 +1,13 @@
 import { api } from './client';
-import type { MonitoringUpload } from '../types';
+import type { MonitoringUpload, MonitoringUploadListResponse } from '../types';
 
 export const monitoringApi = {
-  list: async (params?: { device_item_id?: number; vm_id?: number }): Promise<MonitoringUpload[]> => {
+  list: async (params?: { device_item_id?: number; vm_id?: number; page?: number; limit?: number }): Promise<MonitoringUploadListResponse> => {
     const searchParams = new URLSearchParams();
     if (params?.device_item_id) searchParams.append('device_item_id', params.device_item_id.toString());
     if (params?.vm_id) searchParams.append('vm_id', params.vm_id.toString());
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
     const queryString = searchParams.toString();
     return api.get(`/monitoring-uploads/${queryString ? `?${queryString}` : ''}`);
   },

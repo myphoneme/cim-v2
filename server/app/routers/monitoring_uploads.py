@@ -11,7 +11,7 @@ from ..models.monitoring_upload import MonitoringUpload
 from ..models.metric_sample import MetricSample
 from ..models.device_item import DeviceItem
 from ..models.vm_item import VmItem
-from ..schemas.monitoring_upload import MonitoringUploadResponse, MonitoringConfirmRequest
+from ..schemas.monitoring_upload import MonitoringUploadResponse, MonitoringConfirmRequest, MonitoringUploadListResponse
 from ..middleware.auth import get_current_user
 from ..services.metrics_extraction_service import MetricsExtractionService
 from ..services.alert_engine import evaluate_sample
@@ -102,10 +102,12 @@ async def upload_monitoring_screenshot(
     return upload
 
 
-@router.get("/", response_model=List[MonitoringUploadResponse])
+@router.get("/", response_model=MonitoringUploadListResponse)
 async def list_uploads(
     device_item_id: Optional[int] = Query(None),
     vm_id: Optional[int] = Query(None),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -114,7 +116,10 @@ async def list_uploads(
         query = query.filter(MonitoringUpload.device_item_id == device_item_id)
     if vm_id:
         query = query.filter(MonitoringUpload.vm_id == vm_id)
-    return query.order_by(MonitoringUpload.created_at.desc()).limit(200).all()
+    total = query.count()
+    offset = (page - 1) * limit
+    items = query.order_by(MonitoringUpload.created_at.desc()).offset(offset).limit(limit).all()
+    return {"items": items, "total": total, "page": page, "limit": limit}
 
 
 @router.get("/{upload_id}", response_model=MonitoringUploadResponse)

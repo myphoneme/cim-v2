@@ -250,6 +250,13 @@ export interface MonitoringUpload {
   created_at: string;
 }
 
+export interface MonitoringUploadListResponse {
+  items: MonitoringUpload[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface MetricDefinition {
   id: number;
   key: string;

@@ -129,19 +129,24 @@ Help engineers with equipment monitoring, troubleshooting, and maintenance."""
     def extract_metrics_from_image(self, file_path: str) -> Dict[str, Any]:
         prompt = """
         Extract metrics from this monitoring dashboard screenshot.
-        If multiple hosts/VMs are present, return one metric per host with the host/VM IP.
+        If multiple hosts/VMs are present, return a COMPLETE row per host/VM IP with all metric keys.
+        For each IP, always include cpu_util, ram_util, disk_util, net_in, net_out (use null if not visible).
         Return JSON ONLY in this format:
         {
           "metrics": [
             {"ip_address": "10.0.1.11", "key": "cpu_util", "value": 0.0, "unit": "%", "confidence": 0.0},
-            {"ip_address": "10.0.1.11", "key": "ram_util", "value": 0.0, "unit": "%", "confidence": 0.0}
+            {"ip_address": "10.0.1.11", "key": "ram_util", "value": 0.0, "unit": "%", "confidence": 0.0},
+            {"ip_address": "10.0.1.11", "key": "disk_util", "value": 0.0, "unit": "%", "confidence": 0.0},
+            {"ip_address": "10.0.1.11", "key": "net_in", "value": null, "unit": "%", "confidence": 0.0},
+            {"ip_address": "10.0.1.11", "key": "net_out", "value": null, "unit": "%", "confidence": 0.0}
           ],
           "raw_text": "...",
           "confidence": 0.0,
           "status": "ok",
           "capture_time": null
         }
-        Use keys like cpu_util, ram_util, disk_util, net_in, net_out.
+        Use keys cpu_util, ram_util, disk_util, net_in, net_out only.
+        If a metric is not visible for an IP, set value to null (do not guess).
         """
         try:
             import mimetypes

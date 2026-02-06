@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { monitoringApi } from '../api/monitoring';
 
-export function useMonitoringUploads(params?: { device_item_id?: number; vm_id?: number }) {
+export function useMonitoringUploads(params?: { device_item_id?: number; vm_id?: number; page?: number; limit?: number }) {
   return useQuery({
     queryKey: ['monitoring-uploads', params],
     queryFn: () => monitoringApi.list(params),
@@ -14,11 +14,13 @@ export function useUploadMonitoring() {
     mutationFn: (formData: FormData) => monitoringApi.upload(formData),
     onSuccess: (created) => {
       queryClient.setQueriesData({ queryKey: ['monitoring-uploads'] }, (old) => {
-        if (!Array.isArray(old)) return old;
-        if (old.some((upload) => upload.id === created.id)) {
+        if (!old || typeof old !== 'object' || !('items' in old)) return old;
+        const existing = (old as any).items as any[];
+        if (!Array.isArray(existing)) return old;
+        if (existing.some((upload) => upload.id === created.id)) {
           return old;
         }
-        return [created, ...old];
+        return { ...old, items: [created, ...existing] };
       });
       queryClient.invalidateQueries({ queryKey: ['monitoring-uploads'] });
     },

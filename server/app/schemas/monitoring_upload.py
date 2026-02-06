@@ -38,3 +38,10 @@ class MonitoringMetricEdit(BaseModel):
 class MonitoringConfirmRequest(BaseModel):
     metrics: Optional[List[MonitoringMetricEdit]] = None
     capture_time: Optional[datetime] = None
+
+
+class MonitoringUploadListResponse(BaseModel):
+    items: List[MonitoringUploadResponse]
+    total: int
+    page: int
+    limit: int
