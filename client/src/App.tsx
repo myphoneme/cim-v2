@@ -6,6 +6,9 @@ import Dashboard from './components/Dashboard';
 import InfrastructureView from './components/InfrastructureView';
 import Library from './components/Library';
 import ChatInterface from './components/ChatInterface';
+import MonitoringUploads from './components/MonitoringUploads';
+import AlertsPanel from './components/AlertsPanel';
+import SettingsPanel from './components/SettingsPanel';
 import AdminPanel from './components/AdminPanel';
 import LoginForm from './components/LoginForm';
 
@@ -34,6 +37,9 @@ function App() {
     { id: NavigationTab.Inventory, label: 'Infrastructure', icon: 'fa-server' },
     { id: NavigationTab.Library, label: 'Ops Library', icon: 'fa-book-bookmark' },
     { id: NavigationTab.Assistant, label: 'AI Assistant', icon: 'fa-bolt-lightning' },
+    { id: NavigationTab.Monitoring, label: 'Monitoring', icon: 'fa-camera' },
+    { id: NavigationTab.Alerts, label: 'Alerts', icon: 'fa-triangle-exclamation' },
+    { id: NavigationTab.Settings, label: 'Settings', icon: 'fa-sliders' },
     { id: NavigationTab.Admin, label: 'Admin Hub', icon: 'fa-gear' },
   ];
 
@@ -47,6 +53,12 @@ function App() {
         return <Library />;
       case NavigationTab.Assistant:
         return <ChatInterface />;
+      case NavigationTab.Monitoring:
+        return <MonitoringUploads />;
+      case NavigationTab.Alerts:
+        return <AlertsPanel />;
+      case NavigationTab.Settings:
+        return <SettingsPanel />;
       case NavigationTab.Admin:
         return <AdminPanel />;
       default:
@@ -136,6 +148,9 @@ function App() {
               {activeTab === NavigationTab.Inventory && 'Infrastructure'}
               {activeTab === NavigationTab.Library && 'Ops Library'}
               {activeTab === NavigationTab.Assistant && 'AI Assistant'}
+              {activeTab === NavigationTab.Monitoring && 'Monitoring'}
+              {activeTab === NavigationTab.Alerts && 'Alerts'}
+              {activeTab === NavigationTab.Settings && 'Settings'}
               {activeTab === NavigationTab.Admin && 'Admin Hub'}
             </h2>
           </div>

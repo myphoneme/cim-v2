@@ -25,13 +25,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
+    let didTimeout = false;
+    const timeout = setTimeout(() => {
+      didTimeout = true;
+      setUser(null);
+      setIsLoading(false);
+    }, 8000);
+
     try {
       const response = await authApi.getCurrentUser();
-      setUser(response.user);
+      if (!didTimeout) {
+        setUser(response.user);
+      }
     } catch {
-      setUser(null);
+      if (!didTimeout) {
+        setUser(null);
+      }
     } finally {
-      setIsLoading(false);
+      if (!didTimeout) {
+        setIsLoading(false);
+      }
+      clearTimeout(timeout);
     }
   }, []);
 

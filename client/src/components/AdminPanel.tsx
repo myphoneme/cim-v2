@@ -9,12 +9,13 @@ import {
   useEquipmentById,
 } from '../hooks/useEquipment';
 import { useLocations, useDeviceItems, useCreateLocation, useCreateDeviceItemsBulk } from '../hooks/useAssets';
+import { useVmItems, useCreateVmItem, useUpdateVmItem, useDeleteVmItem } from '../hooks/useVms';
 import { attachmentsApi } from '../api/equipment';
 import type { DeviceArea, DocumentCategory, EquipmentListItem, Attachment, DeviceItemListItem, DeviceCategory, VirtualMachine } from '../types';
 import AssetInventoryPanel from './AssetInventoryPanel';
-import { VIRTUAL_MACHINES } from '../vms';
+import LlmConfigPanel from './LlmConfigPanel';
 
-type AdminTab = 'equipment' | 'assets' | 'locations' | 'vms';
+type AdminTab = 'equipment' | 'assets' | 'locations' | 'vms' | 'llm';
 
 interface FormData {
   name: string;
@@ -75,6 +76,8 @@ const emptyVm: VirtualMachine = {
   host_ip: '',
   vcpu: '',
   location: 'Pune Data Center',
+  grafana_url: '',
+  metric_group_id: undefined,
 };
 
 export default function AdminPanel() {
@@ -82,6 +85,10 @@ export default function AdminPanel() {
   const { data: inventory = [], isLoading } = useEquipment();
   const { data: locations = [] } = useLocations();
   const { data: deviceItems = [] } = useDeviceItems();
+  const { data: vmItems = [] } = useVmItems();
+  const createVm = useCreateVmItem();
+  const updateVm = useUpdateVmItem();
+  const deleteVm = useDeleteVmItem();
   const createLocation = useCreateLocation();
   const createDeviceBulk = useCreateDeviceItemsBulk();
   const createMutation = useCreateEquipment();
@@ -104,7 +111,7 @@ export default function AdminPanel() {
   const [bulkSuccess, setBulkSuccess] = useState<string | null>(null);
   const [isBulkSaving, setIsBulkSaving] = useState(false);
   const [vmSearch, setVmSearch] = useState('');
-  const [vmData, setVmData] = useState<VirtualMachine[]>(VIRTUAL_MACHINES);
+  const [vmData, setVmData] = useState<VirtualMachine[]>([]);
   const [vmModalOpen, setVmModalOpen] = useState(false);
   const [vmForm, setVmForm] = useState<VirtualMachine>(emptyVm);
   const [vmEditingId, setVmEditingId] = useState<string | number | null>(null);
@@ -139,6 +146,7 @@ export default function AdminPanel() {
     { id: 'assets' as AdminTab, label: 'Asset Inventory', icon: 'fa-server' },
     { id: 'locations' as AdminTab, label: 'Locations & Items', icon: 'fa-location-dot' },
     { id: 'vms' as AdminTab, label: 'Virtual Machines', icon: 'fa-desktop' },
+    { id: 'llm' as AdminTab, label: 'LLM Keys', icon: 'fa-key' },
   ];
 
   const renderTabs = () => (
@@ -175,13 +183,14 @@ export default function AdminPanel() {
     });
     deviceItems.forEach((item: DeviceItemListItem) => {
       const loc = locations.find(l => l.name === item.location_name || l.code === item.location_name);
-      if (!loc || !map[loc.id]) return;
-      map[loc.id].count += 1;
+      const entry = loc ? map[loc.id] : undefined;
+      if (!loc || !entry) return;
+      entry.count += 1;
       const host = (item.hostname || '').toLowerCase();
-      if (host.includes('rtr')) map[loc.id].routers += 1;
-      else if (host.includes('fw')) map[loc.id].firewalls += 1;
-      else if (host.includes('poe')) map[loc.id].poe += 1;
-      else map[loc.id].switches += 1;
+      if (host.includes('rtr')) entry.routers += 1;
+      else if (host.includes('fw')) entry.firewalls += 1;
+      else if (host.includes('poe')) entry.poe += 1;
+      else entry.switches += 1;
     });
     return map;
   }, [deviceItems, locations]);
@@ -244,29 +253,43 @@ export default function AdminPanel() {
     }
   };
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem('vmData');
-    if (saved) {
-      try {
-        setVmData(JSON.parse(saved));
-      } catch {
-        setVmData(VIRTUAL_MACHINES);
-      }
-    }
-  }, []);
+  const locationIdByName = useMemo(() => {
+    const map: Record<string, number> = {};
+    locations.forEach(loc => { map[loc.name] = loc.id; });
+    return map;
+  }, [locations]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('vmData', JSON.stringify(vmData));
-  }, [vmData]);
+    const mapped = vmItems.map(vm => ({
+      id: vm.id,
+      name: vm.name,
+      vendor: vm.vendor || '',
+      project: vm.project || '',
+      tier: vm.tier || '',
+      ip_address: vm.ip_address || '',
+      hostname: vm.hostname || '',
+      role: vm.role || '',
+      os: vm.os || '',
+      disk_primary: vm.disk_primary || '',
+      disk_secondary: vm.disk_secondary || '',
+      memory_gb: vm.memory_gb || '',
+      host_ip: vm.host_ip || '',
+      vcpu: vm.vcpu || '',
+      location: locations.find(l => l.id === vm.location_id)?.name || '',
+      grafana_url: vm.grafana_url || '',
+      metric_group_id: vm.metric_group_id,
+    }));
+    setVmData(mapped);
+  }, [vmItems, locations]);
 
   const parseBulkLines = () => {
     const lines = bulkText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (!lines.length) return [];
 
     const splitLine = (line: string) => line.split(/\s+/).filter(Boolean);
-    const headerParts = splitLine(lines[0]).map(h => h.toLowerCase());
+    const firstLine = lines[0];
+    if (!firstLine) return [];
+    const headerParts = splitLine(firstLine).map(h => h.toLowerCase());
     const knownHeaders = ['hostname', 'ip', 'ip_address', 'device_name', 'name', 'description', 'status', 'node', 'category'];
     const hasHeader = headerParts.some(h => knownHeaders.includes(h) || h === 'ip') && headerParts.length > 2;
     const headerMap: Record<string, number> = {};
@@ -283,7 +306,10 @@ export default function AdminPanel() {
       const parts = splitLine(line);
       const getVal = (keys: string[]) => {
         for (const key of keys) {
-          if (headerMap[key] !== undefined && parts[headerMap[key]]) return parts[headerMap[key]];
+          if (headerMap[key] !== undefined) {
+            const value = parts[headerMap[key]];
+            if (value) return value;
+          }
         }
         return '';
       };
@@ -298,28 +324,33 @@ export default function AdminPanel() {
 
       if (!hostname) {
         let tokens = parts;
-        if (looksNumeric(tokens[0])) {
+        const firstToken = tokens[0] ?? '';
+        if (looksNumeric(firstToken)) {
           tokens = tokens.slice(1);
         }
-        hostname = tokens[0] || '';
-        if (tokens[1] && looksIp(tokens[1])) {
-          ip = tokens[1];
+        hostname = tokens[0] ?? '';
+        const secondToken = tokens[1] ?? '';
+        if (secondToken && looksIp(secondToken)) {
+          ip = secondToken;
           desc = tokens.slice(2).join(' ');
         } else {
           desc = tokens.slice(1).join(' ');
         }
       }
 
-      if (!ip && parts[1] && looksIp(parts[1])) {
-        ip = parts[1];
+      const secondPart = parts[1] ?? '';
+      if (!ip && secondPart && looksIp(secondPart)) {
+        ip = secondPart;
       }
       desc = desc || hostname;
+
+      const normalizedStatus = status.toLowerCase();
 
       return {
         hostname,
         ip_address: ip,
         device_name: desc,
-        status: (['active', 'inactive', 'maintenance', 'decommissioned'].includes(status.toLowerCase()) ? status : 'Active') as 'Active' | 'Inactive' | 'Maintenance' | 'Decommissioned',
+        status: (['active', 'inactive', 'maintenance', 'decommissioned'].includes(normalizedStatus) ? status : 'Active') as 'Active' | 'Inactive' | 'Maintenance' | 'Decommissioned',
       };
     });
 
@@ -352,8 +383,9 @@ export default function AdminPanel() {
       await createDeviceBulk.mutateAsync(payload);
       setBulkSuccess(`Uploaded ${payload.length} devices.`);
       setBulkText('');
-    } catch (err: any) {
-      setBulkError(err?.message || 'Bulk upload failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Bulk upload failed';
+      setBulkError(message);
     } finally {
       setIsBulkSaving(false);
     }
@@ -402,18 +434,36 @@ export default function AdminPanel() {
     setVmModalOpen(true);
   };
 
-  const handleVmDelete = (id: string | number) => {
+  const handleVmDelete = async (id: string | number) => {
     if (confirm('Delete this virtual machine?')) {
-      setVmData(prev => prev.filter(vm => vm.id !== id));
+      await deleteVm.mutateAsync(Number(id));
     }
   };
 
-  const handleVmSubmit = (e: FormEvent) => {
+  const handleVmSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    const payload = {
+      name: vmForm.name,
+      vendor: vmForm.vendor,
+      project: vmForm.project,
+      tier: vmForm.tier,
+      ip_address: vmForm.ip_address,
+      hostname: vmForm.hostname,
+      role: vmForm.role,
+      os: vmForm.os,
+      disk_primary: vmForm.disk_primary,
+      disk_secondary: vmForm.disk_secondary,
+      memory_gb: vmForm.memory_gb === '' ? '' : String(vmForm.memory_gb),
+      host_ip: vmForm.host_ip,
+      vcpu: vmForm.vcpu === '' ? '' : String(vmForm.vcpu),
+      location_id: vmForm.location ? locationIdByName[vmForm.location] : undefined,
+      grafana_url: vmForm.grafana_url,
+      metric_group_id: vmForm.metric_group_id,
+    };
     if (vmEditingId) {
-      setVmData(prev => prev.map(vm => vm.id === vmEditingId ? vmForm : vm));
+      await updateVm.mutateAsync({ id: Number(vmEditingId), data: payload });
     } else {
-      setVmData(prev => [...prev, vmForm]);
+      await createVm.mutateAsync(payload);
     }
     setVmModalOpen(false);
   };
@@ -455,6 +505,15 @@ export default function AdminPanel() {
       <div className="space-y-6 animate-fade-in">
         {renderTabs()}
         <AssetInventoryPanel />
+      </div>
+    );
+  }
+
+  if (activeTab === 'llm') {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        {renderTabs()}
+        <LlmConfigPanel />
       </div>
     );
   }
@@ -519,7 +578,7 @@ export default function AdminPanel() {
               disabled={isCreatingLocation}
               className="px-4 py-2 rounded-xl text-sm font-bold bg-brand-500 text-white pill-shadow disabled:opacity-50"
             >
-              {isCreatingLocation ? 'Saving…' : 'Add Location'}
+              {isCreatingLocation ? 'Savingâ€¦' : 'Add Location'}
             </button>
           </form>
 
@@ -576,7 +635,7 @@ export default function AdminPanel() {
                 {filteredDevices.map(item => (
                   <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition">
                     <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">{item.hostname || item.device_name}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-300">{item.ip_address || '—'}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-300">{item.ip_address || 'â€”'}</td>
                     <td className="px-6 py-4">{item.category}</td>
                     <td className="px-6 py-4 text-xs font-bold text-slate-500">{item.status}</td>
                     <td className="px-6 py-4 text-xs text-slate-500">{item.location_name || 'Unassigned'}</td>
@@ -631,7 +690,7 @@ export default function AdminPanel() {
                   disabled={isBulkSaving}
                   className="px-5 py-2 rounded-xl bg-brand-500 text-white font-bold text-sm pill-shadow disabled:opacity-50"
                 >
-                  {isBulkSaving ? 'Uploading…' : 'Upload Devices'}
+                  {isBulkSaving ? 'Uploadingâ€¦' : 'Upload Devices'}
                 </button>
                 {bulkSuccess && <span className="text-emerald-600 text-sm font-semibold">{bulkSuccess}</span>}
                 {bulkError && <span className="text-red-600 text-sm font-semibold">{bulkError}</span>}
@@ -694,7 +753,7 @@ export default function AdminPanel() {
                   <tr key={vm.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition">
                     <td className="px-6 py-4 font-semibold text-slate-900 dark:text-white">
                       {vm.name}
-                      <div className="text-[10px] uppercase text-slate-500 font-black mt-1">{vm.vendor} • {vm.project}</div>
+                      <div className="text-[10px] uppercase text-slate-500 font-black mt-1">{vm.vendor} â€¢ {vm.project}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-800 dark:text-slate-200">{vm.role}</div>
@@ -707,9 +766,9 @@ export default function AdminPanel() {
                       <div>{vm.disk_primary}</div>
                       {vm.disk_secondary && <div className="text-[11px] text-slate-500">+ {vm.disk_secondary}</div>}
                     </td>
-                    <td className="px-6 py-4">{vm.memory_gb || '—'}</td>
-                    <td className="px-6 py-4">{vm.vcpu || '—'}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-300">{vm.host_ip || '—'}</td>
+                    <td className="px-6 py-4">{vm.memory_gb || 'â€”'}</td>
+                    <td className="px-6 py-4">{vm.vcpu || 'â€”'}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-300">{vm.host_ip || 'â€”'}</td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button onClick={() => handleVmEdit(vm)} className="text-slate-400 hover:text-brand-500">
                         <i className="fa-solid fa-pen-to-square"></i>
@@ -773,6 +832,10 @@ export default function AdminPanel() {
                       <div>
                         <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Host IP</label>
                         <input className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111111] px-3 py-2 text-sm" value={vmForm.host_ip} onChange={e => setVmForm({ ...vmForm, host_ip: e.target.value })} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Grafana URL</label>
+                        <input className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#111111] px-3 py-2 text-sm" value={vmForm.grafana_url || ''} onChange={e => setVmForm({ ...vmForm, grafana_url: e.target.value })} />
                       </div>
                     </div>
                     <div>
@@ -1198,7 +1261,7 @@ export default function AdminPanel() {
                   {selectedEquipment.name}
                 </h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                  {selectedEquipment.vendor} {selectedEquipment.model} • Manage training documents
+                  {selectedEquipment.vendor} {selectedEquipment.model} â€¢ Manage training documents
                 </p>
               </div>
               <button

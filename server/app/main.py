@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from .database import init_db, SessionLocal
@@ -6,6 +7,7 @@ from .models.user import User
 from .models.location import Location
 from .utils.security import get_password_hash
 from .config import get_settings
+from .utils.retention import purge_old_monitoring_data
 from .routers import (
     auth_router,
     equipment_router,
@@ -14,10 +16,32 @@ from .routers import (
     manuals_router,
     locations_router,
     device_items_router,
+    vms_router,
+    monitoring_uploads_router,
+    metrics_router,
+    alerts_router,
+    teams_router,
+    llm_config_router,
 )
 
 settings = get_settings()
 
+
+def _run_retention_purge():
+    db = SessionLocal()
+    try:
+        purge_old_monitoring_data(db, settings.MONITORING_RETENTION_DAYS)
+    finally:
+        db.close()
+
+
+async def retention_loop():
+    while True:
+        try:
+            await asyncio.to_thread(_run_retention_purge)
+        except Exception:
+            pass
+        await asyncio.sleep(60 * 60 * 24)
 
 def seed_admin_user():
     """Create default admin user if no users exist."""
@@ -1298,6 +1322,88 @@ def seed_device_items():
         db.close()
 
 
+def seed_metric_definitions():
+    from .models.metric_definition import MetricDefinition
+
+    db = SessionLocal()
+    try:
+        existing = {m.key for m in db.query(MetricDefinition).all()}
+        defaults = [
+            ("cpu_util", "CPU Usage", "%"),
+            ("ram_util", "RAM Usage", "%"),
+            ("disk_util", "Disk Usage", "%"),
+            ("net_in", "Network In", "%"),
+            ("net_out", "Network Out", "%"),
+        ]
+        for key, name, unit in defaults:
+            if key in existing:
+                continue
+            db.add(MetricDefinition(key=key, display_name=name, default_unit=unit))
+        db.commit()
+    finally:
+        db.close()
+
+
+def seed_metric_groups():
+    from .models.metric_group import MetricGroup
+    from .models.metric_group_member import MetricGroupMember
+
+    db = SessionLocal()
+    try:
+        group = db.query(MetricGroup).filter(MetricGroup.name == "Server-Standard").first()
+        if not group:
+            group = MetricGroup(name="Server-Standard", description="CPU/RAM/Disk/Network standard group")
+            db.add(group)
+            db.commit()
+            db.refresh(group)
+
+        existing_members = {m.metric_key for m in db.query(MetricGroupMember).filter(MetricGroupMember.group_id == group.id)}
+        for key in ["cpu_util", "ram_util", "disk_util", "net_in", "net_out"]:
+            if key in existing_members:
+                continue
+            db.add(MetricGroupMember(group_id=group.id, metric_key=key))
+        db.commit()
+    finally:
+        db.close()
+
+
+def seed_alert_rules():
+    from .models.alert_rule import AlertRule
+    from .models.metric_group import MetricGroup
+
+    db = SessionLocal()
+    try:
+        group = db.query(MetricGroup).filter(MetricGroup.name == "Server-Standard").first()
+        group_id = group.id if group else None
+
+        defaults = [
+            ("High CPU", "cpu_util", ">", 85, "warning"),
+            ("High RAM", "ram_util", ">", 85, "warning"),
+            ("High Disk", "disk_util", ">", 90, "critical"),
+            ("High Net In", "net_in", ">", 85, "warning"),
+            ("High Net Out", "net_out", ">", 85, "warning"),
+        ]
+
+        existing = {(r.name, r.metric_key) for r in db.query(AlertRule).all()}
+        for name, metric_key, op, threshold, severity in defaults:
+            if (name, metric_key) in existing:
+                continue
+            db.add(AlertRule(
+                name=name,
+                group_id=group_id,
+                metric_key=metric_key,
+                operator=op,
+                threshold=threshold,
+                duration_minutes=0,
+                severity=severity,
+                message_template=f"{metric_key} {op} {threshold}",
+                is_enabled=1
+            ))
+        db.commit()
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -1306,6 +1412,10 @@ async def lifespan(app: FastAPI):
     seed_locations()
     seed_sample_equipment()
     seed_device_items()
+    seed_metric_definitions()
+    seed_metric_groups()
+    seed_alert_rules()
+    asyncio.create_task(retention_loop())
     yield
     # Shutdown
     pass
@@ -1338,6 +1448,12 @@ app.include_router(attachments_router, prefix="/api")
 app.include_router(manuals_router, prefix="/api")
 app.include_router(locations_router, prefix="/api")
 app.include_router(device_items_router, prefix="/api")
+app.include_router(vms_router, prefix="/api")
+app.include_router(monitoring_uploads_router, prefix="/api")
+app.include_router(metrics_router, prefix="/api")
+app.include_router(alerts_router, prefix="/api")
+app.include_router(teams_router, prefix="/api")
+app.include_router(llm_config_router, prefix="/api")
 
 
 @app.get("/")

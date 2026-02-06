@@ -14,6 +14,8 @@ class DeviceItemCreate(BaseModel):
     model: Optional[str] = None
     version: Optional[str] = None
     location_id: Optional[int] = None
+    grafana_url: Optional[str] = None
+    metric_group_id: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = None
     description: Optional[str] = None
@@ -31,6 +33,8 @@ class DeviceItemUpdate(BaseModel):
     model: Optional[str] = None
     version: Optional[str] = None
     location_id: Optional[int] = None
+    grafana_url: Optional[str] = None
+    metric_group_id: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = None
     description: Optional[str] = None
@@ -59,6 +63,8 @@ class DeviceItemResponse(BaseModel):
     model: Optional[str] = None
     version: Optional[str] = None
     location_id: Optional[int] = None
+    grafana_url: Optional[str] = None
+    metric_group_id: Optional[int] = None
     username: Optional[str] = None
     password: Optional[str] = None  # Consider masking in production
     description: Optional[str] = None
@@ -85,6 +91,8 @@ class DeviceItemListResponse(BaseModel):
     status: str
     location_name: Optional[str] = None
     equipment_name: Optional[str] = None
+    grafana_url: Optional[str] = None
+    metric_group_id: Optional[int] = None
 
     class Config:
         from_attributes = True

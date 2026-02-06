@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect, Fragment } from 'react';
+import { useMemo, useState, Fragment } from 'react';
 import { useDeviceItems, useLocations } from '../hooks/useAssets';
-import type { DeviceCategory, DeviceItemListItem, VirtualMachine } from '../types';
-import { VIRTUAL_MACHINES } from '../vms';
+import { useVmItems } from '../hooks/useVms';
+import type { DeviceCategory, DeviceItemListItem } from '../types';
 
 const categories: { id: DeviceCategory | 'all'; label: string; icon: string }[] = [
   { id: 'all', label: 'All Devices', icon: 'fa-layer-group' },
@@ -20,29 +20,15 @@ export default function InfrastructureView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDerivedCategory, setSelectedDerivedCategory] = useState<'all' | 'Router' | 'Firewall' | 'Switch' | 'PoE Switch' | 'Virtual'>('all');
   const [expandedItem, setExpandedItem] = useState<number | null>(null);
-  const [showPassword, setShowPassword] = useState<number | null>(null);
-  const [vmData, setVmData] = useState<VirtualMachine[]>(VIRTUAL_MACHINES);
 
   const { data: locations = [] } = useLocations();
+  const { data: vmItems = [] } = useVmItems();
   const queryCategory = activeCategory !== 'all' && activeCategory !== 'Virtual' ? { category: activeCategory } : {};
   const { data: items = [], isLoading } = useDeviceItems({
     ...queryCategory,
     ...(selectedLocation !== 'all' && { location_id: selectedLocation }),
   });
   const { data: allItems = [], isLoading: isLoadingAll } = useDeviceItems();
-
-  // Load persisted VM edits
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem('vmData');
-    if (saved) {
-      try {
-        setVmData(JSON.parse(saved));
-      } catch {
-        setVmData(VIRTUAL_MACHINES);
-      }
-    }
-  }, []);
 
   const locationIdByName = useMemo(() => {
     const map: Record<string, number> = {};
@@ -59,19 +45,19 @@ export default function InfrastructureView() {
     return 'Switch';
   };
 
-  const vmAll = useMemo(() => vmData.map(vm => ({
+  const vmAll = useMemo(() => vmItems.map(vm => ({
     id: Number(vm.id) + 100000,
     device_name: vm.role || vm.name,
-    hostname: vm.name,
+    hostname: vm.hostname || vm.name,
     ip_address: vm.ip_address,
     serial_number: '',
     category: 'Virtual' as DeviceCategory,
     model: vm.os,
     version: '',
     status: 'Active',
-    location_name: vm.location || 'Pune Data Center',
-    equipment_name: `${vm.project} ${vm.tier}`,
-  })), [vmData]);
+    location_name: locations.find(l => l.id === vm.location_id)?.name || 'Unassigned',
+    equipment_name: `${vm.project || ''} ${vm.tier || ''}`.trim(),
+  })), [vmItems, locations]);
 
   const gridData = useMemo(() => {
     const map: Record<string, Record<'Router' | 'Firewall' | 'Switch' | 'PoE Switch' | 'Virtual' | 'total', number>> = {};
@@ -125,10 +111,12 @@ export default function InfrastructureView() {
     }
   };
 
-  const categoryCounts = displayItems.reduce((acc, item) => {
-    acc[item.category] = (acc[item.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const categoryCounts = useMemo(() => {
+    return [...allItems, ...vmAll].reduce((acc, item) => {
+      acc[item.category] = (acc[item.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [allItems, vmAll]);
 
   const loading = isLoading || isLoadingAll;
 

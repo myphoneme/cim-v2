@@ -6,20 +6,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
+server/uploads/*
+server/venv/
 node_modules
 dist
 dist-ssr
-.vite
-.cache
-.parcel-cache
-.eslintcache
-.turbo
-coverage
-tmp
-temp
-*.tmp
-*.temp
 *.local
 
 # Editor directories and files
@@ -32,21 +23,15 @@ temp
 *.njsproj
 *.sln
 *.sw?
-server/uploads/*
-
-# Python / FastAPI
+# Python cache
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.venv/
-venv/
-env/
+*$py.class
+client/node_modules/
 .env
+.env.*
 server/.env
-
-# SQLite / local DBs
-*.sqlite
-*.sqlite3
+server/uploads/
 server/database.sqlite
+
+

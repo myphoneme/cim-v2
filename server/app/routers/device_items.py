@@ -61,6 +61,8 @@ async def list_device_items(
             "status": item.status,
             "location_name": item.location.name if item.location else None,
             "equipment_name": equipment_name,
+            "grafana_url": item.grafana_url,
+            "metric_group_id": item.metric_group_id,
         })
 
     return result

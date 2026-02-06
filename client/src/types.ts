@@ -112,6 +112,9 @@ export enum NavigationTab {
   Inventory = 'inventory',
   Library = 'library',
   Assistant = 'assistant',
+  Monitoring = 'monitoring',
+  Alerts = 'alerts',
+  Settings = 'settings',
   Admin = 'admin',
 }
 
@@ -143,6 +146,8 @@ export interface DeviceItem {
   model?: string;
   version?: string;
   location_id?: number;
+  grafana_url?: string;
+  metric_group_id?: number;
   username?: string;
   password?: string;
   description?: string;
@@ -171,6 +176,8 @@ export interface DeviceItemListItem {
   status: string;
   location_name?: string;
   equipment_name?: string;
+  grafana_url?: string;
+  metric_group_id?: number;
 }
 
 export interface VirtualMachine {
@@ -189,4 +196,133 @@ export interface VirtualMachine {
   host_ip: string;
   vcpu: number | string;
   location?: string;
+  grafana_url?: string;
+  metric_group_id?: number;
+}
+
+
+export interface VmItem {
+  id: number;
+  name: string;
+  vendor?: string;
+  project?: string;
+  tier?: string;
+  ip_address?: string;
+  hostname?: string;
+  role?: string;
+  os?: string;
+  disk_primary?: string;
+  disk_secondary?: string;
+  memory_gb?: string;
+  host_ip?: string;
+  vcpu?: string;
+  location_id?: number;
+  grafana_url?: string;
+  metric_group_id?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MonitoringUpload {
+  id: number;
+  device_item_id?: number;
+  vm_id?: number;
+  location_id?: number;
+  file_path: string;
+  file_name: string;
+  mime_type?: string;
+  uploaded_by_user_id?: number;
+  capture_time?: string;
+  dashboard_label?: string;
+  raw_text?: string;
+  extracted_metrics?: Array<{
+    key?: string;
+    value?: number;
+    unit?: string;
+    ip_address?: string;
+    device_item_id?: number;
+    vm_id?: number;
+    confidence?: number;
+  }>;
+  parse_status: string;
+  parse_confidence?: number;
+  parse_error?: string;
+  created_at: string;
+}
+
+export interface MetricDefinition {
+  id: number;
+  key: string;
+  display_name: string;
+  default_unit?: string;
+  description?: string;
+}
+
+export interface MetricGroup {
+  id: number;
+  name: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface MetricSample {
+  id: number;
+  device_item_id?: number;
+  vm_id?: number;
+  captured_at: string;
+  metric_key: string;
+  value: number;
+  unit?: string;
+  source_upload_id?: number;
+  confidence?: number;
+}
+
+export interface AlertRule {
+  id: number;
+  name: string;
+  group_id?: number;
+  metric_key: string;
+  operator: string;
+  threshold: number;
+  duration_minutes: number;
+  severity: string;
+  message_template?: string;
+  team_id?: number;
+  is_enabled: boolean;
+  created_at: string;
+}
+
+export interface Alert {
+  id: number;
+  device_item_id?: number;
+  vm_id?: number;
+  rule_id?: number;
+  status: string;
+  severity: string;
+  detected_at: string;
+  latest_value?: number;
+  summary?: string;
+  evidence_upload_id?: number;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  email_alias?: string;
+  created_at: string;
+}
+
+export interface LlmApiKeySummary {
+  id: number;
+  provider: string;
+  label?: string;
+  masked_key: string;
+  created_at: string;
+  is_selected: boolean;
+}
+
+export interface LlmConfigResponse {
+  selected_key_id?: number;
+  requires_selection: boolean;
+  keys: LlmApiKeySummary[];
 }

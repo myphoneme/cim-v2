@@ -26,6 +26,9 @@ class DeviceItem(Base):
     # Location
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
 
+    grafana_url = Column(String, nullable=True)
+    metric_group_id = Column(Integer, ForeignKey("metric_groups.id"), nullable=True)
+
     # Credentials (stored securely - consider encryption in production)
     username = Column(String, nullable=True)
     password = Column(String, nullable=True)  # Should be encrypted in production
@@ -41,3 +44,7 @@ class DeviceItem(Base):
     # Relationships
     equipment = relationship("Equipment", backref="device_items")
     location = relationship("Location", back_populates="device_items")
+    metric_group = relationship("MetricGroup", back_populates="device_items")
+    monitoring_uploads = relationship("MonitoringUpload", back_populates="device_item")
+    metric_samples = relationship("MetricSample", back_populates="device_item")
+    alerts = relationship("Alert", back_populates="device_item")

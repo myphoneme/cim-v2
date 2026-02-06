@@ -19,6 +19,7 @@ interface FormData {
   model: string;
   version: string;
   location_id: string;
+  grafana_url: string;
   username: string;
   password: string;
   description: string;
@@ -36,6 +37,7 @@ const emptyForm: FormData = {
   model: '',
   version: '',
   location_id: '',
+  grafana_url: '',
   username: '',
   password: '',
   description: '',
@@ -94,6 +96,7 @@ export default function AssetInventoryPanel() {
       model: item.model || '',
       version: item.version || '',
       location_id: '',
+      grafana_url: item.grafana_url || '',
       username: '',
       password: '',
       description: '',
@@ -356,6 +359,18 @@ export default function AssetInventoryPanel() {
                     className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm focus:border-brand-500 outline-none transition-all text-slate-900 dark:text-white font-mono"
                     value={formData.ip_address}
                     onChange={e => setFormData({ ...formData, ip_address: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest mb-2">
+                    Grafana URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://grafana/..."
+                    className="w-full bg-slate-50 dark:bg-white/5 border-2 border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm focus:border-brand-500 outline-none transition-all text-slate-900 dark:text-white"
+                    value={formData.grafana_url}
+                    onChange={e => setFormData({ ...formData, grafana_url: e.target.value })}
                   />
                 </div>
                 <div>
